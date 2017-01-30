@@ -1,4 +1,5 @@
 # bitmanio
+[![Build Status](https://travis-ci.org/pellepl/bitmanio.svg?branch=master)](https://travis-ci.org/pellepl/bitmanio)
 Bit manipulation IO - break free of the fixed bit size tyranny
 
  This library gives variable bit range access to memory, either as streams or as arrays. Streams will give dynamic bit range access while arrays give fixed bit range access.
