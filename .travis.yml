@@ -6,3 +6,4 @@ compiler:
 before_script:
 
 script: make all && make clean && make test
+
