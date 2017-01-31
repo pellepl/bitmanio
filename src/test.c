@@ -14,7 +14,7 @@
 #define BITMANIO_STORAGE_BITS 64
 #include "bitmanio.h"
 
-#define TEST_SIZE             4 //TODO 1024*256
+#define TEST_SIZE             1024*256
 
 static int bits(uint64_t v) {
   int j = 63;
