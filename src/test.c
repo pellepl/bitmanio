@@ -16,6 +16,8 @@
 
 #define TEST_SIZE             1024*256
 
+//#define DEBUG
+
 static int bits(uint64_t v) {
   int j = 63;
   while (j > 0 && (v & (1ULL << j)) == 0) {
@@ -93,8 +95,7 @@ static int test_stream_random(void) {
   return 0;
 }
 
-static int test_stream(void) {
-  printf("%s\n", __FUNCTION__);
+static int _test_stream(int zero) {
   uint64_t ref[TEST_SIZE];
   uint8_t mem8[TEST_SIZE];
   uint16_t mem16[TEST_SIZE];
@@ -113,10 +114,10 @@ static int test_stream(void) {
 
   uint32_t j;
   for (j = 1; j <= 64; j++) {
-    memset(mem8,0,sizeof(mem8));
-    memset(mem16,0,sizeof(mem16));
-    memset(mem32,0,sizeof(mem32));
-    memset(mem64,0,sizeof(mem64));
+    memset(mem8,zero ? 0xff : 0,sizeof(mem8));
+    memset(mem16,zero ? 0xff : 0,sizeof(mem16));
+    memset(mem32,zero ? 0xff : 0,sizeof(mem32));
+    memset(mem64,zero ? 0xff : 0,sizeof(mem64));
 
     bitmanio_init_stream8(&bs8, mem8);
     bitmanio_init_stream16(&bs16, mem16);
@@ -125,10 +126,17 @@ static int test_stream(void) {
 
     for (i = 0; i < sizeof(ref)/sizeof(ref[0]); i++) {
       uint64_t v = ref[i] & ((1ULL<<j)-1);
-      if (j <= 8) bitmanio_write8(&bs8, v, j);
-      if (j <= 16) bitmanio_write16(&bs16, v, j);
-      if (j <= 32) bitmanio_write32(&bs32, v, j);
-      bitmanio_write64(&bs64, v, j);
+      if (zero) {
+        if (j <= 8) bitmanio_writez8(&bs8, v, j);
+        if (j <= 16) bitmanio_writez16(&bs16, v, j);
+        if (j <= 32) bitmanio_writez32(&bs32, v, j);
+        bitmanio_writez64(&bs64, v, j);
+      } else {
+        if (j <= 8) bitmanio_write8(&bs8, v, j);
+        if (j <= 16) bitmanio_write16(&bs16, v, j);
+        if (j <= 32) bitmanio_write32(&bs32, v, j);
+        bitmanio_write64(&bs64, v, j);
+      }
     }
 
     bitmanio_init_stream8(&bs8, mem8);
@@ -162,6 +170,16 @@ static int test_stream(void) {
   }
 
   return 0;
+}
+
+static int test_stream_nonzero(void) {
+  printf("%s\n", __FUNCTION__);
+  return _test_stream(0);
+}
+
+static int test_stream_zero(void) {
+  printf("%s\n", __FUNCTION__);
+  return _test_stream(1);
 }
 
 static int test_array(void) {
@@ -225,24 +243,64 @@ static int test_array(void) {
   return 0;
 }
 
+#ifdef DEBUG
+
+static void _dump_bits(uint8_t *m, uint32_t len) {
+  while (len--) {
+    int i;
+    uint8_t v = *m++;
+    for (i = 0; i < 8; i++) {
+      printf("%d", v & (1<<(7-i)) ? 1 : 0);
+    }
+    printf(" ");
+  }
+  printf("\n");
+}
+
+static void debug(void) {
+  uint8_t mem8[8];
+
+  bitmanio_stream8_t bs8;
+  memset(mem8,0xff,sizeof(mem8));
+  bitmanio_init_stream8(&bs8, mem8);
+  int i = 0;
+  while (1) {
+    printf("bits written %d\n", bitmanio_getpos8(&bs8));
+    _dump_bits(mem8, sizeof(mem8));
+    if (bitmanio_getpos8(&bs8) + (i+1)>= 8*sizeof(mem8))
+      break;
+    bitmanio_writez8(&bs8, i, (i+1));
+    printf("wrote %d bits\n", i+1);
+    i = (i+1) % 7;
+  }
+}
+
+#endif
+
 int main(int argc, char **args) {
   (void)argc; (void)args;
 
+#ifdef DEBUG
+  debug();
+#endif
+
   srand(0x12345678);
   int res_test_stream_random = test_stream_random();
-  int res_test_stream = test_stream();
+  int res_test_stream_nz = test_stream_nonzero();
+  int res_test_stream_z = test_stream_zero();
   int res_test_array = test_array();
 
   int res = 
             res_test_stream_random |
-            res_test_stream |
+            res_test_stream_nz |
+            res_test_stream_z |
             res_test_array |
             0;
 
   if (res) {
     printf("test failed\n");
   } else {
-    printf("test ok\n");
+    printf("TEST OK\n");
   }
   return res;
 }

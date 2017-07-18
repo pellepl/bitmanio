@@ -161,8 +161,6 @@ typedef struct {
 
 /**
  * Initializes bitmanio memory stream.
- * Note that the given memory must be zeroed if this stream is used
- * for writing.
  * @param bs  pointer a bitmanio_stream<X>_t struct
  * @param mem pointer memory where stream is read from or written to.
  */
@@ -210,7 +208,8 @@ __BM_TYPE __BM_FN(bitmanio_read, __BM_FN_PF)(
 #endif
 
 /**
- * Writes to bitmanio memory stream.
+ * Writes to bitmanio memory stream. Does not zero the bits prior to writing.
+ * Hence, when using this function the stream memory must be zeroed by user.
  * @param bs   pointer a bitmanio_stream<X>_t struct
  * @param v    the value to write
  * @param bits number of bits to write
@@ -231,6 +230,39 @@ void __BM_FN(bitmanio_write, __BM_FN_PF)(
     d[0] |= v >> (__BM_TBITS - shift);
   } else {
     d[0] |= v << (__BM_TBITS - (bits + bs->b_offs));
+  }
+  bs->b_offs += bits;
+  if (bs->b_offs >= __BM_TBITS) {
+    bs->b_offs &= (__BM_TBITS - 1);
+    bs->m_offs++;
+  }
+}
+#endif
+
+/**
+ * Writes to bitmanio memory stream. Zeroes the bits prior to writing.
+ * @param bs   pointer a bitmanio_stream<X>_t struct
+ * @param v    the value to write
+ * @param bits number of bits to write
+ */
+void __BM_FN(bitmanio_writez, __BM_FN_PF)(
+  __BM_TP(bitmanio_stream, __BM_FN_PF) *bs,
+  __BM_TYPE v,
+  uint8_t bits)
+#ifndef __BM_IMPLEMENTATION
+;
+#else
+{
+  __BM_TYPE m = bits == __BM_TBITS ? (__BM_TYPE)~0 : (__BM_TYPE)(((__BM_TYPE)1<<bits)-1);
+  v &= m;
+  __BM_TYPE *d = &bs->mem[bs->m_offs];
+  if (bs->b_offs + bits > __BM_TBITS) {
+    uint8_t shift = 2 * __BM_TBITS - (bs->b_offs + bits);
+    d[1] = (d[1] & ~(m << shift)) | (v << shift);
+    d[0] = (d[0] & ~(m >> (__BM_TBITS - shift))) | (v >> (__BM_TBITS - shift));
+  } else {
+    uint8_t shift = __BM_TBITS - (bits + bs->b_offs);
+    d[0] = (d[0] & ~(m << shift)) | (v << shift);
   }
   bs->b_offs += bits;
   if (bs->b_offs >= __BM_TBITS) {
@@ -274,8 +306,6 @@ uint32_t __BM_FN(bitmanio_getpos, __BM_FN_PF)(
 
 /**
  * Initializes bitmanio memory array.
- * In contranst to memory streams, the given memory does not have to
- * be zeroed if this array will be written to.
  * @param ba   pointer a bitmanio_array<X>_t struct
  * @param mem  pointer memory where the array is stored
  * @param bits number of bits of one array element
