@@ -64,14 +64,76 @@ Bit manipulation IO - break free of the fixed bit size tyranny
 ```
 ## Full API
 ```C
+/**
+ * Initializes bitmanio memory stream.
+ * @param bs  pointer a bitmanio_stream<X>_t struct
+ * @param mem pointer memory where stream is read from or written to.
+ */
 void bitmanio_init_stream<X>(bitmanio_stream<X>_t *bs, uint<X>_t *mem);
+
+/**
+ * Reads from bitmanio memory stream.
+ * @param bs    pointer a bitmanio_stream<X>_t struct
+ * @param bits  number of bits to read
+ * @return read value from stream
+ */
 uint<X>_t bitmanio_read<X>(bitmanio_stream<X>_t *bs, uint8_t bits);
+
+/**
+ * Writes to bitmanio memory stream. Does not zero the bits prior to writing.
+ * Hence, when using this function the stream memory must be zeroed by user.
+ * @param bs   pointer a bitmanio_stream<X>_t struct
+ * @param v    the value to write
+ * @param bits number of bits to write
+ */
 void bitmanio_write<X>(bitmanio_stream<X>_t *bs, uint<X>_t v, uint8_t bits);
+
+/**
+ * Writes to bitmanio memory stream. Zeroes the bits prior to writing.
+ * @param bs   pointer a bitmanio_stream<X>_t struct
+ * @param v    the value to write
+ * @param bits number of bits to write
+ */
+void bitmanio_writez<X>(bitmanio_stream<X>_t *bs, uint<X>_t v, uint8_t bits);
+
+/**
+ * Sets bitmanio memory stream position in bits.
+ * @param bs   pointer a bitmanio_stream<X>_t struct
+ * @param bits bit offset in stream
+ */
 void bitmanio_setpos<X>(bitmanio_stream<X>_t *bs, uint32_t bits);
+
+/**
+ * Gets bitmanio memory stream position in bits.
+ * @param bs   pointer a bitmanio_stream<X>_t struct
+ * @return bit offset in stream
+ */
 uint32_t bitmanio_getpos<X>(bitmanio_stream<X>_t *bs);
 
+
+
+/**
+ * Initializes bitmanio memory array.
+ * @param ba   pointer a bitmanio_array<X>_t struct
+ * @param mem  pointer memory where the array is stored
+ * @param bits number of bits of one array element
+ */
 void bitmanio_init_array<X>(bitmanio_array<X>_t *ba, uint<X>_t *mem, uint8_t bits);
+
+/**
+ * Reads value from bitmanio memory array.
+ * @param ba pointer a bitmanio_array<X>_t struct
+ * @param ix the index in the array to read
+ * @return read value from array
+ */
 uint<X>_t bitmanio_get<X>(bitmanio_array<X>_t *ba, uint32_t ix);
+
+/**
+ * Writes value to bitmanio memory array.
+ * @param ba pointer a bitmanio_array<X>_t struct
+ * @param ix the index in the array to write to
+ * @param v  the value to write
+ */
 void bitmanio_set<X>(bitmanio_array<X>_t *ba, uint32_t ix, uint<X>_t v);
 ```
 
