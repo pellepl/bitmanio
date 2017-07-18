@@ -63,6 +63,7 @@ Bit manipulation IO - break free of the fixed bit size tyranny
    <.. code using the library ..>
 ```
 ## Full API
+`<X>` is any of the 8, 16, 32, or 64 bit implementations.
 ```C
 /**
  * Initializes bitmanio memory stream.
