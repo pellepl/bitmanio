@@ -23,13 +23,13 @@
 /**
  * bitmanio.h
  * Bit manipulation IO - break free of the fixed bit size tyranny
- * 
+ *
  * This library gives variable bit range access to memory, either as
- * streams or as arrays. Streams will give dynamic bit range access 
+ * streams or as arrays. Streams will give dynamic bit range access
  * while arrays give fixed bit range access.
- * 
- * The underlying memory buffer can be defined as 8, 16, 32, or 64 
- * bit arrays. Bitmanio can only handle bit ranges up to underlying 
+ *
+ * The underlying memory buffer can be defined as 8, 16, 32, or 64
+ * bit arrays. Bitmanio can only handle bit ranges up to underlying
  * memory size. If you compile bitmanio to tampering with e.g. 16 bit
  * memory, the variable bit range will comprise from 1 to 16 bits.
  * However, all variants can be exist simultaneously as the API will
@@ -43,10 +43,10 @@
  *   void bitmanio_init_stream16(bitmanio_stream16_t *bs, uint16_t *mem);
  *   uint16_t bitmanio_read16(bitmanio_stream16_t *bs, uint8_t bits);
  *   ... etc
- * 
+ *
  * Bitmanio has an upper limit of 2^23 number of bytes in total for an
  * array or stream.
- * 
+ *
  * The header file contains both API and implementation.
  * To include this library as both header and implementation in your
  * source, define
@@ -58,13 +58,13 @@
  * along with the number of storage bits before including bitmanio.h.
  *
  * Example 1 - use 8-bit variant in only one file:
- * //file:bitmanio_tester_8.c 
+ * //file:bitmanio_tester_8.c
  *   #define BITMANIO_STORAGE_BITS 8
  *   #include "bitmanio.h"
  *   <.. code using the library ..>
  *
  * Example 2 - use 8-bit and 32-bit variants in only one file:
- * //file:bitmanio_tester_8_and_32.c 
+ * //file:bitmanio_tester_8_and_32.c
  *   #define BITMANIO_STORAGE_BITS 8
  *   #include "bitmanio.h"
  *   #define BITMANIO_STORAGE_BITS 32
@@ -102,8 +102,9 @@
 #elif BITMANIO_STORAGE_BITS == 64
   #define __BM_TYPE uint64_t
   #define __BM_FN_PF 64
+#elif BITMANIO_STORAGE_BITS == BYTE
 #else
-  #error BITMANIO_STORAGE_BITS must be 8, 16, 32, or 64
+  #error BITMANIO_STORAGE_BITS must be 8, 16, 32, 64, or BYTE
 #endif
 
 #undef  __BM_FILTERED
@@ -119,6 +120,8 @@
     #define __BITMANIO32_H_
   #elif BITMANIO_STORAGE_BITS == 64 && !defined(__BITMANIO64_H_)
     #define __BITMANIO64_H_
+  #elif BITMANIO_STORAGE_BITS == BYTE && !defined(__BITMANIOBYTE_H_)
+    #define __BITMANIOBYTE_H_
   #else
     #undef __BM_FILTERED
     #define __BM_FILTERED         1
@@ -136,6 +139,7 @@
 #define __BM_TBITS (sizeof(__BM_TYPE)*8)
 
 #ifndef __BM_IMPLEMENTATION
+#if BITMANIO_STORAGE_BITS != BYTE
 /**
  * bitmanio memory stream
  */
@@ -157,7 +161,33 @@ typedef struct {
   /** number of bits in array entries */
   uint8_t bits;
 } __BM_TP(bitmanio_array, __BM_FN_PF);
+
+#else /* BITMANIO_STORAGE_BITS == BYTE */
+/**
+ * bitmanio memory array, underlying 8-bit organization
+ */
+typedef struct {
+  /** memory pointer */
+  uint8_t *mem;
+  /** number of bits in array entries */
+  uint8_t bits;
+} bitmanio_bytearray_t;
+
+/**
+ * bitmanio memory stream, underlying 8-bit organization
+ */
+typedef struct {
+  /** memory pointer */
+  uint8_t *mem;
+  /** number of bits in array entries */
+  uint32_t bitpos;
+} bitmanio_bytestream_t;
+
+#endif /* BITMANIO_STORAGE_BITS == BYTE */
 #endif /* __BM_IMPLEMENTATION */
+
+
+#if BITMANIO_STORAGE_BITS != BYTE
 
 /**
  * Initializes bitmanio memory stream.
@@ -165,7 +195,7 @@ typedef struct {
  * @param mem pointer memory where stream is read from or written to.
  */
 void __BM_FN(bitmanio_init_stream, __BM_FN_PF)(
-  __BM_TP(bitmanio_stream, __BM_FN_PF) *bs, 
+  __BM_TP(bitmanio_stream, __BM_FN_PF) *bs,
   __BM_TYPE *mem)
 #ifndef __BM_IMPLEMENTATION
 ;
@@ -175,7 +205,7 @@ void __BM_FN(bitmanio_init_stream, __BM_FN_PF)(
   bs->m_offs = 0;
   bs->b_offs = 0;
 }
-#endif
+#endif /* __BM_IMPLEMENTATION */
 
 /**
  * Reads from bitmanio memory stream.
@@ -184,7 +214,7 @@ void __BM_FN(bitmanio_init_stream, __BM_FN_PF)(
  * @return read value from stream
  */
 __BM_TYPE __BM_FN(bitmanio_read, __BM_FN_PF)(
-  __BM_TP(bitmanio_stream, __BM_FN_PF) *bs, 
+  __BM_TP(bitmanio_stream, __BM_FN_PF) *bs,
   uint8_t bits)
 #ifndef __BM_IMPLEMENTATION
 ;
@@ -205,7 +235,7 @@ __BM_TYPE __BM_FN(bitmanio_read, __BM_FN_PF)(
   }
   return bits == __BM_TBITS ? v : v & (((__BM_TYPE)1<<bits) - 1);
 }
-#endif
+#endif /* __BM_IMPLEMENTATION */
 
 /**
  * Writes to bitmanio memory stream. Does not zero the bits prior to writing.
@@ -237,7 +267,7 @@ void __BM_FN(bitmanio_write, __BM_FN_PF)(
     bs->m_offs++;
   }
 }
-#endif
+#endif /* __BM_IMPLEMENTATION */
 
 /**
  * Writes to bitmanio memory stream. Zeroes the bits prior to writing.
@@ -270,7 +300,7 @@ void __BM_FN(bitmanio_writez, __BM_FN_PF)(
     bs->m_offs++;
   }
 }
-#endif
+#endif /* __BM_IMPLEMENTATION */
 
 /**
  * Sets bitmanio memory stream position in bits.
@@ -287,7 +317,7 @@ void __BM_FN(bitmanio_setpos, __BM_FN_PF)(
   bs->m_offs = bits / (__BM_TBITS);
   bs->b_offs = bits & (__BM_TBITS - 1);
 }
-#endif
+#endif /* __BM_IMPLEMENTATION */
 
 /**
  * Gets bitmanio memory stream position in bits.
@@ -302,7 +332,8 @@ uint32_t __BM_FN(bitmanio_getpos, __BM_FN_PF)(
 {
   return bs->m_offs * __BM_TBITS + bs->b_offs;
 }
-#endif
+#endif /* __BM_IMPLEMENTATION */
+
 
 /**
  * Initializes bitmanio memory array.
@@ -312,7 +343,7 @@ uint32_t __BM_FN(bitmanio_getpos, __BM_FN_PF)(
  */
 void __BM_FN(bitmanio_init_array, __BM_FN_PF)(
   __BM_TP(bitmanio_array, __BM_FN_PF) *ba,
-  __BM_TYPE *mem, 
+  __BM_TYPE *mem,
   uint8_t bits)
 #ifndef __BM_IMPLEMENTATION
 ;
@@ -321,7 +352,7 @@ void __BM_FN(bitmanio_init_array, __BM_FN_PF)(
   ba->mem = mem;
   ba->bits = bits;
 }
-#endif
+#endif /* __BM_IMPLEMENTATION */
 
 /**
  * Reads value from bitmanio memory array.
@@ -348,7 +379,7 @@ __BM_TYPE __BM_FN(bitmanio_get, __BM_FN_PF)(
   }
   return bits == __BM_TBITS ? v : v & (((__BM_TYPE)1<<bits) - 1);
 }
-#endif
+#endif /* __BM_IMPLEMENTATION */
 
 /**
  * Writes value to bitmanio memory array.
@@ -379,9 +410,223 @@ void __BM_FN(bitmanio_set, __BM_FN_PF)(
     d[0] = (d[0] & ~(m << shift)) | (v << shift);
   }
 }
-#endif
+#endif /* __BM_IMPLEMENTATION */
 
+#else /* BITMANIO_STORAGE_BITS == BYTE */
+
+#ifdef __BM_IMPLEMENTATION
+static uint32_t __bm_bits_get(uint8_t *mem, uint32_t bitix,
+    uint8_t bits) {
+  uint8_t rbits = bits;
+  uint32_t mix = bitix / 8;
+  uint32_t sbix = bitix % 8;
+
+  uint32_t v;
+
+  uint8_t mask;
+  uint8_t fbits = 8 - sbix;
+  /* first do the byte with possible offset */
+  if (rbits < fbits) {
+    mask = (1<<rbits)-1;
+    v = (mem[mix] >> sbix) & mask;
+    rbits = 0;
+  } else {
+    mask = (1<<fbits)-1;
+    v = (mem[mix] >> sbix) & mask;
+    rbits -= fbits;
+  }
+  mix++;
+  /* then do the bytes guaranteed no offset and full (fbits=8,rbits>=8) */
+  while (rbits >= 8) {
+    v |= (mem[mix]) << (bits - rbits);
+    rbits -= 8;
+    mix++;
+  }
+  /* finally the no-offset, non-full byte (fbits=8,rbits<8) */
+  if (rbits) {
+    mask = (1<<rbits)-1;
+    v |= (mem[mix] & mask) << (bits - rbits);
+  }
+
+  return v;
+}
+
+static void __bm_bits_set(uint8_t *mem, uint32_t bitix,
+    uint8_t bits, uint32_t v) {
+  uint8_t rbits = bits;
+  uint32_t mix = bitix / 8;
+  uint32_t sbix = bitix % 8;
+
+  uint8_t mask;
+  uint8_t data;
+  uint8_t fbits = 8 - sbix;
+  /* first do the byte with possible offset */
+  if (rbits < fbits) {
+    mask = (1<<rbits)-1;
+    data = (v & mask) << sbix;
+    mask <<= sbix;
+    rbits = 0;
+  } else {
+    mask = (1<<fbits)-1;
+    data = (v & mask) << sbix;
+    mask <<= sbix;
+    rbits -= fbits;
+    v >>= fbits;
+  }
+  mem[mix] = (mem[mix] & ~mask) | data;
+  mix++;
+  /* then do the bytes guaranteed no offset and full (fbits=8,rbits>=8) */
+  while (rbits >= 8) {
+    mem[mix] = v;
+    rbits -= 8;
+    v >>= 8;
+    mix++;
+  }
+  /* finally the no-offset, non-full byte (fbits=8,rbits<8) */
+  if (rbits) {
+    mask = (1<<rbits)-1;
+    data = (v & mask);
+    mem[mix] = (mem[mix] & ~mask) | data;
+  }
+}
+#endif /* __BM_IMPLEMENTATION */
+
+/**
+ * Initializes bitmanio memory bytestream.
+ * @param bs  pointer a bitmanio_bytestream_t struct
+ * @param mem pointer memory where stream is read from or written to.
+ */
+void bitmanio_init_stream(bitmanio_bytestream_t *bs,
+    uint8_t *mem)
 #ifndef __BM_IMPLEMENTATION
+;
+#else
+{
+  bs->mem = mem;
+  bs->bitpos = 0;
+}
+#endif /* __BM_IMPLEMENTATION */
+
+/**
+ * Reads from bitmanio memory bytestream.
+ * @param bs    pointer a bitmanio_bytestream_t struct
+ * @param bits  number of bits to read
+ * @return read value from stream
+ */
+uint32_t bitmanio_read(bitmanio_bytestream_t *bs,
+  uint8_t bits)
+#ifndef __BM_IMPLEMENTATION
+;
+#else
+{
+  uint32_t v = __bm_bits_get(bs->mem, bs->bitpos, bits);
+  bs->bitpos += bits;
+  return v;
+}
+#endif /* __BM_IMPLEMENTATION */
+
+/**
+ * Writes to bitmanio memory bytestream.
+ * @param bs   pointer a bitmanio_bytestream_t struct
+ * @param v    the value to write
+ * @param bits number of bits to write
+ */
+void bitmanio_write(bitmanio_bytestream_t *bs, uint32_t v,
+  uint8_t bits)
+#ifndef __BM_IMPLEMENTATION
+;
+#else
+{
+  __bm_bits_set(bs->mem, bs->bitpos, bits, v);
+  bs->bitpos += bits;
+}
+#endif /* __BM_IMPLEMENTATION */
+
+/**
+ * Sets bitmanio memory bytestream position in bits.
+ * @param bs   pointer a bitmanio_bytestream_t struct
+ * @param bits bit offset in stream
+ */
+void bitmanio_setpos(bitmanio_bytestream_t *bs,
+  uint32_t bits)
+#ifndef __BM_IMPLEMENTATION
+;
+#else
+{
+  bs->bitpos = bits;
+}
+#endif /* __BM_IMPLEMENTATION */
+
+/**
+ * Gets bitmanio memory bytestream position in bits.
+ * @param bs   pointer a bitmanio_bytestream_t struct
+ * @return bit offset in stream
+ */
+uint32_t bitmanio_getpos(bitmanio_bytestream_t *bs)
+#ifndef __BM_IMPLEMENTATION
+;
+#else
+{
+  return bs->bitpos;
+}
+#endif /* __BM_IMPLEMENTATION */
+
+/**
+ * Initializes bitmanio memory bytearray.
+ * This differs from bitmanio_array<X> that the underlying memory always is
+ * byte aligned. However, it does handle up to 32-bit array elements. It is not
+ * as effective as bitmanio_array<X>_t:s, though.
+ * Useful if the program must be agnostic to target endianness.
+ * @param ba   pointer a bitmanio_bytearray_t struct
+ * @param mem  pointer memory where the array is stored
+ * @param bits number of bits of one array element
+ */
+void bitmanio_init_array(bitmanio_bytearray_t *ba,
+    uint8_t *mem, uint8_t bits)
+#ifndef __BM_IMPLEMENTATION
+;
+#else
+{
+  ba->mem = mem;
+  ba->bits = bits;
+}
+#endif /* __BM_IMPLEMENTATION */
+
+/**
+ * Reads value from bitmanio memory bytearray.
+ * @param ba pointer a bitmanio_bytearray_t struct
+ * @param ix the index in the array to read
+ * @return read value from array
+ */
+uint32_t bitmanio_get(bitmanio_bytearray_t *ba, uint32_t ix)
+#ifndef __BM_IMPLEMENTATION
+;
+#else
+{
+  return __bm_bits_get(ba->mem, ba->bits * ix, ba->bits);
+}
+#endif /* __BM_IMPLEMENTATION */
+
+/**
+ * Writes value to bitmanio memory bytearray.
+ * @param ba pointer a bitmanio_bytearray_t struct
+ * @param ix the index in the array to write to
+ * @param v  the value to write
+ */
+void bitmanio_set(bitmanio_bytearray_t *ba, uint32_t ix, uint32_t v)
+#ifndef __BM_IMPLEMENTATION
+;
+#else
+{
+  __bm_bits_set(ba->mem, ba->bits * ix, ba->bits, v);
+}
+#endif /* __BM_IMPLEMENTATION */
+
+#endif /* BITMANIO_STORAGE_BITS == BYTE */
+
+#endif /* __BM_UNFILTERED */
+
+#if !defined(__BM_IMPLEMENTATION)
   #ifndef BITMANIO_HEADER
     #define __BM_IMPLEMENTATION
     /* implement functions */
@@ -394,5 +639,5 @@ void __BM_FN(bitmanio_set, __BM_FN_PF)(
   #undef BITMANIO_HEADER
 #endif /* __BM_IMPLEMENTATION */
 
-#endif /* __BM_UNFILTERED */
+
 #undef BITMANIO_STORAGE_BITS
